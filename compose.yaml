@@ -1,0 +1,37 @@
+services:
+  database:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: invoicelens
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      POSTGRES_DB: invoicelens
+    volumes: ["postgres:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U invoicelens"]
+      interval: 5s
+      retries: 20
+  web:
+    build: .
+    ports: ["127.0.0.1:3000:3000"]
+    environment: &app-env
+      DATABASE_URL: postgresql://invoicelens:${DB_PASSWORD}@database:5432/invoicelens
+      APP_URL: ${APP_URL:?Set APP_URL}
+      APP_ENV: production
+      AUTH_MODE: basic
+      WORKSPACE_USER: ${WORKSPACE_USER:-reviewer}
+      WORKSPACE_PASSWORD: ${WORKSPACE_PASSWORD:?Set a strong workspace password}
+      STORAGE_DIR: /app/.data/files
+      OCR_PROVIDER: tesseract
+    volumes: ["documents:/app/.data"]
+    depends_on:
+      database: { condition: service_healthy }
+  worker:
+    build: .
+    command: ["npm", "run", "worker"]
+    environment: *app-env
+    volumes: ["documents:/app/.data"]
+    depends_on:
+      database: { condition: service_healthy }
+volumes:
+  postgres:
+  documents:

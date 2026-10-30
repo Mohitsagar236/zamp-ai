@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS vendors(id text PRIMARY KEY,name text NOT NULL,identifier text NOT NULL UNIQUE,aliases jsonb NOT NULL,approved boolean NOT NULL);
+CREATE TABLE IF NOT EXISTS purchase_orders(id text PRIMARY KEY,vendor_id text NOT NULL REFERENCES vendors(id),currency text NOT NULL,status text NOT NULL,limit_minor bigint NOT NULL CHECK(limit_minor>=0),description text NOT NULL);
+CREATE TABLE IF NOT EXISTS invoices(id text PRIMARY KEY,filename text NOT NULL,hash text NOT NULL,storage_key text NOT NULL,status text NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now(),state jsonb NOT NULL);
+CREATE INDEX IF NOT EXISTS invoices_hash ON invoices(hash);
+CREATE INDEX IF NOT EXISTS invoices_created ON invoices(created_at DESC);
+CREATE TABLE IF NOT EXISTS commitments(invoice_id text PRIMARY KEY,po_id text NOT NULL REFERENCES purchase_orders(id),vendor_id text NOT NULL,business_key text NOT NULL UNIQUE,amount_minor bigint NOT NULL CHECK(amount_minor>0),label text NOT NULL,created_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS commitments_po ON commitments(po_id);
+CREATE TABLE IF NOT EXISTS jobs(id text PRIMARY KEY,invoice_id text NOT NULL REFERENCES invoices(id),status text NOT NULL,attempts integer NOT NULL DEFAULT 0,lease_until timestamptz,created_at timestamptz NOT NULL DEFAULT now(),error text);
+CREATE UNIQUE INDEX IF NOT EXISTS jobs_active_invoice ON jobs(invoice_id) WHERE status IN ('queued','running');
+CREATE TABLE IF NOT EXISTS events(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,invoice_id text NOT NULL REFERENCES invoices(id),at timestamptz NOT NULL DEFAULT now(),type text NOT NULL,data jsonb NOT NULL);
+CREATE INDEX IF NOT EXISTS events_invoice ON events(invoice_id,id);
+CREATE TABLE IF NOT EXISTS worker_heartbeat(id text PRIMARY KEY,at timestamptz NOT NULL);
