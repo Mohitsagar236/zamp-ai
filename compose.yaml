@@ -1,37 +1,199 @@
 services:
-  database:
+  postgres:
     image: postgres:17
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: invoicelens
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
-      POSTGRES_DB: invoicelens
-    volumes: ["postgres:/var/lib/postgresql/data"]
+      POSTGRES_USER: invoicelens_admin
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:?Set POSTGRES_ADMIN_PASSWORD}
+      POSTGRES_DB: postgres
+      WORKFLOW_DB_PASSWORD: ${WORKFLOW_DB_PASSWORD:?Set WORKFLOW_DB_PASSWORD}
+      EXTRACTION_DB_PASSWORD: ${EXTRACTION_DB_PASSWORD:?Set EXTRACTION_DB_PASSWORD}
+      DECISION_DB_PASSWORD: ${DECISION_DB_PASSWORD:?Set DECISION_DB_PASSWORD}
+      IDENTITY_DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?Set IDENTITY_DB_PASSWORD}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+      - ./scripts/postgres-init.sh:/docker-entrypoint-initdb.d/10-services.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U invoicelens"]
+      test: ["CMD-SHELL", "pg_isready -U invoicelens_admin -d postgres"]
       interval: 5s
+      timeout: 3s
       retries: 20
-  web:
-    build: .
-    ports: ["127.0.0.1:3000:3000"]
-    environment: &app-env
-      DATABASE_URL: postgresql://invoicelens:${DB_PASSWORD}@database:5432/invoicelens
-      APP_URL: ${APP_URL:?Set APP_URL}
+
+  extraction-migrate:
+    build:
+      context: .
+      dockerfile: services/extraction/Dockerfile
+    command: ["npm", "run", "migrate"]
+    environment: &extraction-env
+      SERVICE: extraction
       APP_ENV: production
-      AUTH_MODE: basic
-      WORKSPACE_USER: ${WORKSPACE_USER:-reviewer}
-      WORKSPACE_PASSWORD: ${WORKSPACE_PASSWORD:?Set a strong workspace password}
+      PORT: 4200
+      HOST: 0.0.0.0
+      SERVICE_TOKEN: ${EXTRACTION_TOKEN:?Set EXTRACTION_TOKEN}
+      DATABASE_URL: postgresql://extraction_svc:${EXTRACTION_DB_PASSWORD}@postgres:5432/invoicelens_extraction
+      OCR_CACHE_DIR: /app/.data/ocr-cache
+      MAX_FILE_MB: 10
+      MAX_PAGES: 10
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  decision-migrate:
+    build:
+      context: .
+      dockerfile: services/decision/Dockerfile
+    command: ["npm", "run", "migrate"]
+    environment: &decision-env
+      SERVICE: decision
+      APP_ENV: ${DECISION_APP_ENV:-production}
+      PORT: 4300
+      HOST: 0.0.0.0
+      SERVICE_TOKEN: ${DECISION_TOKEN:?Set DECISION_TOKEN}
+      DATABASE_URL: postgresql://decision_svc:${DECISION_DB_PASSWORD}@postgres:5432/invoicelens_decision
+      ROUNDING_TOLERANCE_MINOR: ${ROUNDING_TOLERANCE_MINOR:-1}
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  decision-seed:
+    build:
+      context: .
+      dockerfile: services/decision/Dockerfile
+    command: ["npm", "run", "seed"]
+    environment: *decision-env
+    depends_on:
+      decision-migrate: { condition: service_completed_successfully }
+
+  workflow-migrate:
+    build:
+      context: .
+      dockerfile: services/workflow/Dockerfile
+    command: ["npm", "run", "migrate"]
+    environment: &workflow-env
+      SERVICE: workflow
+      APP_ENV: production
+      PORT: 4100
+      HOST: 0.0.0.0
+      WORKFLOW_TOKEN: ${WORKFLOW_TOKEN:?Set WORKFLOW_TOKEN}
+      WORKFLOW_IDENTITY_SECRET: ${WORKFLOW_IDENTITY_SECRET:?Set WORKFLOW_IDENTITY_SECRET}
+      DATABASE_URL: postgresql://workflow_svc:${WORKFLOW_DB_PASSWORD}@postgres:5432/invoicelens_workflow
+      EXTRACTION_URL: http://extraction:4200
+      EXTRACTION_TOKEN: ${EXTRACTION_TOKEN:?Set EXTRACTION_TOKEN}
+      DECISION_URL: http://decision:4300
+      DECISION_TOKEN: ${DECISION_TOKEN:?Set DECISION_TOKEN}
+      WORKSPACE_URL: ${APP_URL:?Set APP_URL}
+      WORKSPACE_AUTH_MODE: individual
       STORAGE_DIR: /app/.data/files
-      OCR_PROVIDER: tesseract
-    volumes: ["documents:/app/.data"]
+      MAX_FILE_MB: 10
+      MAX_PAGES: 10
+    volumes:
+      - documents:/app/.data
     depends_on:
-      database: { condition: service_healthy }
-  worker:
+      postgres: { condition: service_healthy }
+
+  identity-migrate:
     build: .
-    command: ["npm", "run", "worker"]
-    environment: *app-env
-    volumes: ["documents:/app/.data"]
+    command: ["npm", "run", "auth:migrate"]
+    environment:
+      AUTH_DATABASE_URL: postgresql://identity_svc:${IDENTITY_DB_PASSWORD}@postgres:5432/invoicelens_identity
     depends_on:
-      database: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+
+  extraction:
+    build:
+      context: .
+      dockerfile: services/extraction/Dockerfile
+    environment: *extraction-env
+    restart: unless-stopped
+    volumes:
+      - extraction-cache:/app/.data
+    depends_on:
+      extraction-migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4200/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  decision:
+    build:
+      context: .
+      dockerfile: services/decision/Dockerfile
+    environment: *decision-env
+    restart: unless-stopped
+    depends_on:
+      decision-seed: { condition: service_completed_successfully }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4300/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  workflow:
+    build:
+      context: .
+      dockerfile: services/workflow/Dockerfile
+    environment: *workflow-env
+    restart: unless-stopped
+    volumes:
+      - documents:/app/.data
+    depends_on:
+      workflow-migrate: { condition: service_completed_successfully }
+      extraction: { condition: service_started }
+      decision: { condition: service_started }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4100/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  frontend:
+    build: .
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    environment:
+      APP_URL: ${APP_URL:?Set APP_URL}
+      APP_ENV: ${DECISION_APP_ENV:-production}
+      AUTH_MODE: individual
+      AUTH_DATABASE_URL: postgresql://identity_svc:${IDENTITY_DB_PASSWORD}@postgres:5432/invoicelens_identity
+      AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET}
+      WORKFLOW_IDENTITY_SECRET: ${WORKFLOW_IDENTITY_SECRET:?Set WORKFLOW_IDENTITY_SECRET}
+      WORKFLOW_URL: http://workflow:4100
+      WORKFLOW_TOKEN: ${WORKFLOW_TOKEN:?Set WORKFLOW_TOKEN}
+      MAX_FILE_MB: 10
+    restart: unless-stopped
+    depends_on:
+      workflow: { condition: service_started }
+      identity-migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/api/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
 volumes:
   postgres:
   documents:
+  extraction-cache:

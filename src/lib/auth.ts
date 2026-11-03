@@ -1,43 +1,63 @@
+import "dotenv/config";
 import { timingSafeEqual } from "node:crypto";
-import { config } from "./config";
-import { InputError } from "./storage";
-const same = (a: string, b: string) =>
-  Buffer.byteLength(a) === Buffer.byteLength(b) &&
-  timingSafeEqual(Buffer.from(a), Buffer.from(b));
+export class AuthError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
 export function authorize(request: Request) {
-  if (config.AUTH_MODE === "local") {
-    const host = request.headers.get("host")?.split(":")[0];
-    if (!host || !["localhost", "127.0.0.1", "["].includes(host))
-      throw new InputError(
-        "This workspace is restricted to local access.",
-        403,
-      );
+  const mode = process.env.AUTH_MODE ?? "local",
+    url = new URL(process.env.APP_URL ?? "http://127.0.0.1:3000");
+  if (mode === "individual")
+    throw new AuthError(401, "An individual session is required.");
+  if (process.env.APP_ENV === "production" && mode !== "individual")
+    throw new AuthError(
+      503,
+      "Production requires individual workspace authentication.",
+    );
+  if (mode !== "local" && mode !== "basic" && mode !== "individual")
+    throw new AuthError(503, "Workspace authentication mode is invalid.");
+  if (mode === "basic" && (process.env.WORKSPACE_PASSWORD ?? "").length < 16)
+    throw new AuthError(503, "Workspace authentication is not configured.");
+  if (mode === "local") {
+    const host = request.headers
+      .get("host")
+      ?.replace(/^\[([^\]]+)\].*$/, "$1")
+      .split(":")[0];
+    if (!host || !["127.0.0.1", "localhost", "::1"].includes(host))
+      throw new AuthError(403, "This workspace is restricted to local access.");
   } else {
-    const header = request.headers.get("authorization") ?? "";
     const expected = Buffer.from(
-      `${config.WORKSPACE_USER}:${config.WORKSPACE_PASSWORD}`,
-    ).toString("base64");
-    if (!same(header, "Basic " + expected))
-      throw new InputError("Workspace sign-in required.", 401);
+        "Basic " +
+          Buffer.from(
+            (process.env.WORKSPACE_USER ?? "reviewer") +
+              ":" +
+              (process.env.WORKSPACE_PASSWORD ?? ""),
+          ).toString("base64"),
+      ),
+      actual = Buffer.from(request.headers.get("authorization") ?? "");
+    if (actual.length !== expected.length || !timingSafeEqual(actual, expected))
+      throw new AuthError(401, "Workspace sign-in required.");
   }
-  if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) {
-    const origin = request.headers.get("origin");
-    if (
-      origin !== new URL(config.APP_URL).origin ||
-      request.headers.get("host") !== new URL(config.APP_URL).host
-    )
-      throw new InputError("Request origin is not allowed.", 403);
-  }
+  if (
+    !["GET", "HEAD", "OPTIONS"].includes(request.method) &&
+    (request.headers.get("origin") !== url.origin ||
+      request.headers.get("host") !== url.host)
+  )
+    throw new AuthError(403, "Request origin is not allowed.");
 }
 const buckets = new Map<string, { start: number; count: number }>();
 export function rateLimit(request: Request) {
-  const key = request.headers.get("authorization") ?? "local";
-  const now = Date.now();
-  let b = buckets.get(key);
-  if (!b || now - b.start > 60000) {
-    b = { start: now, count: 0 };
-    buckets.set(key, b);
+  const key = request.headers.get("authorization") ?? "local",
+    now = Date.now();
+  let item = buckets.get(key);
+  if (!item || now - item.start > 60000) {
+    item = { start: now, count: 0 };
+    buckets.set(key, item);
   }
-  if (++b.count > 30)
-    throw new InputError("Too many requests. Try again in one minute.", 429);
+  if (++item.count > 30)
+    throw new AuthError(429, "Too many requests. Try again in one minute.");
 }

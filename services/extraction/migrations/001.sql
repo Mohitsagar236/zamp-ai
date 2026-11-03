@@ -1,0 +1,3 @@
+CREATE TABLE extraction_cache(hash text PRIMARY KEY,api_version text NOT NULL,status text NOT NULL,lease_token uuid,lease_until timestamptz,provider text,created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE extraction_results(hash text PRIMARY KEY REFERENCES extraction_cache(hash),api_version text NOT NULL,result jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE extraction_operations(idempotency_key text PRIMARY KEY,hash text NOT NULL REFERENCES extraction_cache(hash),api_version text NOT NULL,created_at timestamptz NOT NULL DEFAULT now());

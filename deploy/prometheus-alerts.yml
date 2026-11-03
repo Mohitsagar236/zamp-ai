@@ -1,0 +1,39 @@
+groups:
+  - name: invoicelens
+    rules:
+      - alert: InvoiceLensMetricsUnavailable
+        expr: up{job="invoicelens-workflow"} == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: InvoiceLens Workflow cannot be scraped
+      - alert: InvoiceLensProcessingUnavailable
+        expr: invoicelens_worker_heartbeat_age_seconds > 30
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: InvoiceLens worker heartbeat is stale
+      - alert: InvoiceLensQueueDelayed
+        expr: invoicelens_oldest_queued_seconds > 120
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: InvoiceLens invoices are waiting for processing
+      - alert: InvoiceLensFailedJobs
+        expr: invoicelens_jobs{status="failed"} > 0
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: InvoiceLens has failed jobs requiring investigation
+      - alert: InvoiceLensReconciliationDiscrepancy
+        expr: invoicelens_reconciliation_open > 0
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: InvoiceLens has unresolved integrity discrepancies
+      - alert: InvoiceLensStorageLow
+        expr: invoicelens_storage_available_bytes / invoicelens_storage_total_bytes < 0.1
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: InvoiceLens private document volume is running out of space

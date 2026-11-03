@@ -1,0 +1,15 @@
+# Run on the TLS ingress host, with INVOICELENS_DOMAIN set to the approved DNS
+# name and INVOICELENS_UPSTREAM to the private gateway address (e.g. 127.0.0.1:3000).
+# Caddy obtains/renews HTTPS certificates when DNS and ports 80/443 are configured.
+{$INVOICELENS_DOMAIN} {
+    request_body {
+        max_size 27MB
+    }
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "same-origin"
+        -Server
+    }
+    reverse_proxy {$INVOICELENS_UPSTREAM:127.0.0.1:3000}
+}

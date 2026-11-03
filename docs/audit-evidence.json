@@ -1,0 +1,263 @@
+{
+  "auditDate": "2026-10-31 Asia/Kolkata",
+  "commit": "679389fa11e0435e0c773527b2a7b827e421baeb",
+  "sourceTreeInitiallyClean": true,
+  "environment": "macOS arm64; Node 22.23.4; separate PostgreSQL port 54339; app port 3010",
+  "guide": "File present; contents unreadable due macOS EPERM. No candidate-guide claims inferred.",
+  "checks": {
+    "vitest": "30 passed / 2 files",
+    "playwright": "4 passed / 39.0 seconds",
+    "typecheck": "exit 0",
+    "lint": "exit 0",
+    "build": "exit 0"
+  },
+  "evidence": {
+    "probes.json": {
+      "lineItemMismatch": {
+        "id": "b40eab38-dd0c-474d-b0e7-0bbc3de04bde",
+        "decision": "READY_FOR_APPROVAL",
+        "lineItems": [],
+        "text": "Supplier: Northstar Office Supplies\n\nSupplier ID: GST-NORTHSTAR-01\n\nInvoice number: AUD-LINES\n\nInvoice date: 2026-10-26\n\nPO reference: PO-2026-101\n\nCurrency: INR\n\nItem: Consulting | Qty: 2 | Unit price: 100.00 | Amount: 100.00\n\nSubtotal: 100.00\n\nTax: 18.00\n\nTotal: 118.00"
+      },
+      "conflictingTotal": {
+        "id": "bbea1421-efed-4914-82e5-0d37298baf6f",
+        "decision": "READY_FOR_APPROVAL",
+        "total": "118.00",
+        "warnings": []
+      },
+      "validPartial": {
+        "id": "061dc896-ea6a-49a1-ab1e-8c9e3bbe20a2",
+        "decision": "READY_FOR_APPROVAL",
+        "balance": {
+          "limit": "10000000",
+          "prior": "7000000",
+          "excess": "0",
+          "impact": "2000000",
+          "remaining": "3000000",
+          "commitments": [
+            {
+              "poId": "PO-2026-200",
+              "label": "HIST-001 \u00b7 previously approved migration milestone",
+              "vendorId": "v-cloud",
+              "createdAt": "2026-10-30T21:30:47.795Z",
+              "invoiceId": "historical-cloud-001",
+              "amountMinor": "7000000",
+              "businessKey": "v-cloud:HIST001"
+            }
+          ]
+        }
+      },
+      "approvedThenRejected": {
+        "http": 200,
+        "review": "rejected",
+        "remainingReservation": []
+      },
+      "stickyPO": {
+        "id": "5415caa9-4ec1-4e4d-967d-c2d914ef060f",
+        "correctedInputPo": "PO-2026-302",
+        "selectedPo": "PO-2026-301",
+        "evaluatedPo": "PO-2026-301",
+        "decision": "READY_FOR_APPROVAL"
+      },
+      "correctionAudit": {
+        "id": "8472a381-e089-4306-a526-161773e841f8",
+        "original": null,
+        "corrected": "11800.00",
+        "decision": "READY_FOR_APPROVAL",
+        "revision": 2,
+        "correction": {
+          "at": "2026-10-30T21:32:22.621Z",
+          "actor": "workspace reviewer",
+          "action": "correct",
+          "fields": {
+            "tax": "1800.00",
+            "total": "11800.00",
+            "currency": "INR",
+            "subtotal": "10000.00",
+            "lineItems": [],
+            "supplierId": "GST-NORTHSTAR-01",
+            "invoiceDate": "2026-10-26",
+            "poReference": "PO-2026-101",
+            "supplierName": "Northstar Office Supplies",
+            "invoiceNumber": "NS-2026-SCAN"
+          },
+          "reason": "Audit verification of synthetic invoice",
+          "revision": 2
+        },
+        "priorEvaluationInputs": null
+      },
+      "malformedJSON": {
+        "status": 500,
+        "body": {
+          "error": "The request could not be completed. Check database and worker readiness."
+        }
+      }
+    },
+    "scan-structure.json": {
+      "pages": 1,
+      "textItems": 0,
+      "text": "",
+      "imagePaintOperations": 1
+    },
+    "browser-probes.json": {
+      "offlineNotices": [
+        "Connection interrupted. Your runs are saved. Reconnecting\u2026 Retry",
+        "Failed to fetch"
+      ],
+      "afterReconnectNotices": [
+        "Failed to fetch"
+      ],
+      "focused": {
+        "tag": "A",
+        "text": "InvoiceLens",
+        "outline": "solid"
+      },
+      "mobile": {
+        "width": 393,
+        "scroll": 393,
+        "reviewVisible": 1
+      }
+    },
+    "crash-before.json": {
+      "id": "32ccd30a-fd3c-4c22-a92c-21ee4b48d3df",
+      "workerKilledAfterRealOCR": true,
+      "leaseExpiryAdvancedForTest": true,
+      "jobBeforeRestart": "running",
+      "provider": "PDF.js + Tesseract English OCR"
+    },
+    "restart-and-recovery.json": {
+      "unchangedCompletedSnapshots": true,
+      "count": 8,
+      "recoveredInvoice": "32ccd30a-fd3c-4c22-a92c-21ee4b48d3df",
+      "recoveredStatus": "completed",
+      "decision": "BLOCKED",
+      "provider": "PDF.js + Tesseract English OCR",
+      "extractStage": {
+        "name": "Extract invoice data",
+        "status": "skipped",
+        "endedAt": "2026-10-30T21:34:48.960Z",
+        "message": "Using persisted extraction. No repeated OCR request.",
+        "startedAt": "2026-10-30T21:33:28.703Z"
+      },
+      "recoveryHistory": [
+        {
+          "at": "2026-10-30T21:34:12.978Z",
+          "actor": "worker",
+          "action": "recovered",
+          "reason": "Interrupted job requeued; saved extraction will be reused.",
+          "revision": 1
+        }
+      ],
+      "extractionRunningEvents": 1
+    },
+    "recovery-probes.json": {
+      "exhaustedRecovery": {
+        "id": "audit-exhausted-b0ea06ca-9714-46f2-91b2-24e5a017f919",
+        "status": "failed",
+        "error": "Worker interrupted repeatedly. Review the worker setup and retry.",
+        "stages": [
+          {
+            "name": "Register document",
+            "status": "completed"
+          },
+          {
+            "name": "Inspect PDF",
+            "status": "queued"
+          },
+          {
+            "name": "Extract invoice data",
+            "status": "running"
+          },
+          {
+            "name": "Validate fields & arithmetic",
+            "status": "queued"
+          },
+          {
+            "name": "Match vendor & purchase order",
+            "status": "queued"
+          },
+          {
+            "name": "Check duplicates & balance",
+            "status": "queued"
+          },
+          {
+            "name": "Save recommendation",
+            "status": "queued"
+          }
+        ]
+      },
+      "staleWriteServiceInjection": {
+        "id": "8472a381-e089-4306-a526-161773e841f8",
+        "review": "approved",
+        "currentTotal": null,
+        "recommendation": "READY_FOR_APPROVAL",
+        "evaluatedTotal": "11800.00",
+        "method": "saveExtraction invoked as a stale worker completion; not a fully reproduced two-process lease race"
+      }
+    },
+    "boundary-probes.json": {
+      "invalidType": {
+        "status": 400,
+        "body": {
+          "error": "Choose a PDF file."
+        }
+      },
+      "oversize": {
+        "status": 413,
+        "body": {
+          "error": "PDF must be at most 10 MB."
+        }
+      },
+      "missingFile": {
+        "status": 400,
+        "body": {
+          "error": "Select a PDF to upload."
+        }
+      },
+      "recordsBefore": 10,
+      "recordsAfter": 10
+    },
+    "ui-states.json": {
+      "loadingVisible": true,
+      "emptyVisible": true,
+      "retryControlVisible": true,
+      "method": "Browser-only API list response replaced with [] and delayed 600ms; no extraction mocks, no server data changes"
+    },
+    "stale-worker-race.json": {
+      "id": "8094486c-672c-41fc-8aea-72e7972d52c3",
+      "method": "Actual worker SIGSTOP during real OCR; audit lease expiry advanced; replacement worker recovered; reviewer corrected and approved; original worker SIGCONT",
+      "before": {
+        "review": "approved",
+        "total": "118.00",
+        "decision": "READY_FOR_APPROVAL",
+        "reserved": [
+          "11800"
+        ]
+      },
+      "after": {
+        "reserved": [
+          "11800"
+        ]
+      },
+      "finalObserved": {
+        "status": "failed",
+        "review": "approved",
+        "total": "118.00",
+        "decision": "READY_FOR_APPROVAL",
+        "error": "ENOENT: no such file or directory, open '/Users/mohitsagar/Desktop/code/zamp/.data/audit-20261031/checkout/.data/extraction-0cf8e5c1-f775-43b2-9670-b318924e8b9f.json'",
+        "failedStages": [
+          {
+            "name": "Extract invoice data",
+            "status": "failed",
+            "endedAt": "2026-10-31T05:50:01.017Z",
+            "message": "ENOENT: no such file or directory, open '/Users/mohitsagar/Desktop/code/zamp/.data/audit-20261031/checkout/.data/extraction-0cf8e5c1-f775-43b2-9670-b318924e8b9f.json'"
+          }
+        ]
+      },
+      "pollLimit": "Original probe waited for a second completed state; stale worker instead changed the finalized run to failed. Final state was independently read after that wait.",
+      "staleFinalizationFailureReproduced": true,
+      "fieldOverwriteViaRaceReproduced": false,
+      "originalPollFoundSecondCompletedState": false
+    }
+  }
+}

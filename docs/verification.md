@@ -1,35 +1,86 @@
 # Verification results
 
-Verified locally on **31 October 2026 (Asia/Kolkata)**, macOS arm64, Node 22.23.4, PostgreSQL 18.6 local engine. No paid services, provider mocks, external deployment or real private invoices were used.
+Verified locally on **31 October 2026 (Asia/Kolkata)** on macOS arm64 with Node 22.23.4 and PostgreSQL 18.6. Checks use synthetic invoices and isolated test databases; no paid services, external deployment, or personal invoices were used.
 
-| Check | Result |
-| --- | --- |
-| TypeScript (`npm run typecheck`) | Pass |
-| ESLint (`npm run lint`) | Pass |
-| Vitest unit + actual PostgreSQL integration | **30 tests passed** across 2 files |
-| Next.js production build (`npm run build`) | Pass |
-| Playwright against production build | **4 suites passed** in 27.9 seconds |
-| Actual text PDF extraction | PDF.js extracted all required clean-invoice fields; READY_FOR_APPROVAL |
-| Actual image-only PDF extraction | Tesseract OCR read scan; obscured total remained null; NEEDS_REVIEW |
-| Duplicate changed filename | BLOCKED; linked original; zero additional reservation |
-| Split invoice | BLOCKED; INR 100000 limit minus INR 70000 committed = INR 30000 available; INR 40000 request, INR 10000 excess |
-| Two plausible POs | NEEDS_REVIEW; PO-2026-301 and PO-2026-302; no arbitrary choice |
-| Verified correction and PO selection | Browser actions reran checks and reached ready; original extraction retained |
-| Real DB concurrency | One of two concurrent INR 60 reservations against INR 100 succeeded; other blocked; repeated approval did not double count |
-| Corrupt, encrypted and over-page-limit files | Visible execution failures; no successful extraction or decision |
-| Basic auth and document authorization | Temporary production-auth server: unauthorized pages/PDFs 401; valid credentials 200; cross-origin write 403 |
-| Persistence after service restart | All 5 complete invoice snapshots byte-for-byte unchanged after PostgreSQL, web and worker restart |
-| Live-view refresh | Browser reload retained actual stored stage state and result |
-| Mobile browser | 393 × 851 Chromium viewport, core screen navigation without whole-page horizontal overflow; tables scroll within panels |
-| Automated accessibility | Axe WCAG 2 A/AA + 2.1 AA tags: zero violations on overview, upload, records, policy and scanned-invoice detail |
-| Manual browser inspection | Chrome desktop dashboard inspected through accessibility tree and screenshot |
+| Check                                                                                         | Result                                                                                                                                              |
+| --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TypeScript (`npm run typecheck`)                                                              | Pass                                                                                                                                                |
+| ESLint (`npm run lint`)                                                                       | Pass                                                                                                                                                |
+| Prettier (`npm run format:check`)                                                             | Pass                                                                                                                                                |
+| Vitest unit and contract tests (`npm test`)                                                   | 29 tests passed                                                                                                                                     |
+| Root Next.js production build (`npm run build`)                                               | Pass                                                                                                                                                |
+| Workflow, Extraction, and Decision service builds (`npm ci && npm run build` in each service) | Pass independently                                                                                                                                  |
+| Playwright end-to-end suite (`npm run test:e2e`)                                              | 8 tests passed against the service stack and production Next build                                                                                  |
+| Decision concurrency                                                                          | Two concurrent INR 60 evaluations against INR 100 capacity produced exactly one reservation and one blocked result                                  |
+| Workflow restart recovery                                                                     | An expired running lease was recovered after a Workflow process restart; invoice processing completed and recovery was recorded                     |
+| Review audit and lost-response recovery                                                       | Correction reason and before/after values survived a Workflow restart; simulated lost response after Decision approval replayed with one commitment |
+| Extraction variation                                                                          | Unseen synthetic two-page text PDF and unfamiliar date format extracted through the real PDF path; uncertain date required review                   |
+| Migration and worker readiness                                                                | Concurrent Workflow migrations serialized; readiness returned unavailable with the worker stopped                                                   |
+| PDF ingestion and extraction                                                                  | Real generated text PDF extracted and completed the review workflow; scanned image PDF used OCR and routed uncertainty to review                    |
+| Failure and security cases                                                                    | Duplicate, over-limit, corrupt, encrypted, and invalid PDFs were handled safely; API authorization boundaries passed                                |
+| Browser checks                                                                                | Mobile layout, responsive panels, repeated upload interaction, refresh/reconnect, and Axe WCAG 2 A/AA + 2.1 AA checks passed                        |
+| Docker Compose syntax                                                                         | Parsed successfully with PyYAML                                                                                                                     |
 
-The four E2E suites contain many workflow assertions: actual upload/extraction and review, input/security failures, mobile navigation, automated accessibility. They use a separate explicitly disposable `invoicelens_e2e` database and worker; the five-scenario smoke also ran through the normal demo workspace. No fixture manifest is imported by runtime code. Actual provider verification is independently repeatable with `npm run provider:check`.
+The end-to-end harness provisions disposable isolated PostgreSQL databases for each service and removes its temporary cluster afterward. The legacy migration utility was previously verified in read-only dry-run mode and on synthetic local demo records: it verified five source PDFs by safe key, signature and SHA-256, then copied 5 invoices, 4 vendors, 5 purchase orders, 2 commitments, 70 audit events and their PDFs into isolated service databases. This does not validate import reconciliation for a real dataset. The original database and files remain intact.
 
 ## Remaining verification and operational limits
-- Docker/Compose deployment: **unverified** because Docker is unavailable here. Follow README deployment commands on a Docker-equipped host and repeat health/provider/E2E checks.
-- Physical Android device: **unverified**; mobile Chromium viewport checks passed. Test the authenticated HTTPS deployment on a physical Android browser before distribution.
-- Automated WCAG checks and visible focus do not constitute a full manual accessibility audit.
-- Extraction is a conservative English label parser with local OCR. Complex arbitrary layouts, multilingual invoices and automatic tabular line-item parsing are outside this implementation; missing/unreadable fields route to review. No calibrated confidence or regulatory certification is claimed.
-- Identity is one shared workspace reviewer. Fine-grained roles, post-finalization administrator revisions and operational payment integrations are not implemented.
-- Model download needs internet initially; warm and retain `.data/ocr` before an offline demo.
+
+- Docker/Compose runtime and image builds remain **unverified** because Docker is unavailable on this machine. Run the documented Compose workflow on a Docker-equipped host.
+- The legacy-data copy was verified against synthetic local demo records. Keep the original database and files as a rollback copy until the new app is accepted.
+- Physical Android device testing is **unverified**; mobile Chromium viewport checks passed.
+- Automated accessibility checks are not a full manual accessibility audit.
+- Extraction uses a conservative English label parser and local OCR. Complex layouts, multilingual invoices, and automatic line-item parsing route to review or remain unsupported; no regulatory certification is claimed.
+- Production rejects local auth and weak/missing shared Basic credentials, but identity is still shared. Individual accounts, roles, session revocation and tenant isolation are not implemented. See [the remediation tracker](remediation-tracker.md).
+- Reference-data administration, CSV import, general cross-service reconciliation and a safe operator repair tool are not implemented.
+- The OCR approval checkbox records reviewer confirmation only and is not evidence that extracted fields are accurate. The synthetic sample suite does not establish real-invoice performance.
+- Backup/restore instructions in [operations.md](operations.md) are untested; Docker and `pg_dump`/`pg_restore` were unavailable.
+- The statements above reflect the 31 October 2026 tree; see the dated follow-up below for continuation work and current verification.
+
+## Continuation verification — 1 November 2026
+
+The continuation added individual accounts/roles, reference provisioning, persisted Decision operation records, a restricted reconciliation repair, extraction evaluation fixtures, and Compose backup/restore scripts. These checks ran on the updated tree:
+
+| Check                                              | Result                                                                                                                                                                                                                                                     |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TypeScript, ESLint, Prettier, Vitest               | Pass; 29 unit/contract tests                                                                                                                                                                                                                               |
+| Root Next.js production build                      | Pass                                                                                                                                                                                                                                                       |
+| Workflow, Extraction, Decision service builds      | Pass independently                                                                                                                                                                                                                                         |
+| Playwright end-to-end suite                        | 8 tests passed; includes individual identity, reference import, PDF workflows, OCR review gate, browser accessibility/responsiveness, and the new Decision-commit/Workflow-failed reconciliation injection with repeated repair and exactly one commitment |
+| Extraction evaluation harness                      | 4 synthetic fixtures; 36/36 exact expected field values, 0 wrong/missing, 0/20 critical field errors, 4/4 review-warning routing outcomes                                                                                                                  |
+| Compose YAML parse and backup/restore shell syntax | Pass                                                                                                                                                                                                                                                       |
+| Docker/Podman and PostgreSQL dump/restore tools    | BLOCKED: `docker`, `podman`, `pg_dump`, `pg_restore` unavailable                                                                                                                                                                                           |
+
+`npm run evaluate:extraction` generates four separate synthetic PDFs and compares 36 specified field values against the fixture manifest. It reports exact/wrong/missing counts, critical-field errors, and review-warning routing. These cases are authored regression examples, not independent real-invoice accuracy evidence. Real-world accuracy remains **UNVERIFIED** pending an authorized, independently labeled representative dataset.
+
+Container execution and isolated restore remain **BLOCKED/UNVERIFIED** because Docker/Podman and `pg_dump`/`pg_restore` are unavailable. Scripts and precise commands are in [operations.md](operations.md). Do not call restore verified until the full isolated check list succeeds.
+
+- OCR model download needs internet initially; warm and retain `.data/ocr` before an offline demo.
+
+# Dated verification follow-up — 1 November 2026 (continued)
+
+After revision fencing and Workflow transaction changes, the complete browser E2E suite passed **8/8**; its pretest built the production Next.js application. It exercised late evaluation rejection and replay, an expired pre-send lease, correction-versus-approval serialization, and restart between reconciliation scan and repair. The suite also verifies one final commitment and review reasons on replay. The standalone unit/contract suite passed **29 tests**. TypeScript, ESLint, Prettier (source and updated operational documents), shell syntax for both Compose backup/restore scripts, and `git diff --check` passed. The synthetic extraction evaluation remains the prior regression evidence (4 fixtures, 36/36 field values, zero critical errors); no source extraction changes required rerunning it.
+
+The authorized-evaluation harness received no real-data run because no authorized labeled dataset exists. Its results must not be inferred from synthetic fixtures. The Compose image build/start, database migration checks in Compose, OCR/service-auth smoke, restart persistence, backup and isolated restore remain **UNVERIFIED**: a fresh probe found no Docker, Podman, nerdctl, Finch, Colima, `pg_dump` or `pg_restore`. The new CI workflow has been created but not executed. Both backup utilities run inside the Postgres container, so the required environment is a Docker Compose v2 host rather than host PostgreSQL clients. Exact commands and inputs are in [operations.md](operations.md).
+
+Evidence classes and final verdicts are in [remediation-tracker.md](remediation-tracker.md): synthetic assessment/demo is conditionally ready; controlled internal pilot and public use are **NOT READY**.
+
+## Company-workspace verification — 1 November 2026
+
+- The complete browser suite passed **9/9** after adding a committed-upload/lost-response/reload test. Subsequent targeted execution of that test also passed after atomic bootstrap and offline-recovery changes; the shared isolated bootstrap exercised those new paths, including credential hashing, actor/reason audit and session revocation. Production gateway guards, source-approval hold, sample URL denial, source-file corruption detection/resolution, review reason preservation and private metrics authorization are exercised by the isolated harness.
+- The unit/contract suite passed **43 tests** before the final standalone restored-document regression was added; the subsequent final result is recorded below. New coverage includes parser conflicts/grouping/currency, source verification, chunked/oversized/stalled request bodies, secret independence, reconciliation inconsistencies and a real generated-PDF authorized-evaluator contract.
+- Synthetic extraction regression was rerun because the parser changed: **4 PDFs, 36/36 exact fields, zero critical errors, 4/4 warning-routing outcomes**. It remains synthetic evidence only.
+- Public negative evaluation processed **20 real publisher-hosted Portuguese invoices/receipts locally**: 84 annotated field comparisons, 0 correct, 84 missing, 0 wrong nonempty values, 100% source-review routing and 0 processing failures. Parser/provider/contract source hashes, input hashes, Node version and per-category totals are captured in [public-evaluation-results.json](public-evaluation-results.json). No English accuracy or PO-matching result is claimed.
+- The separate native company workspace was provisioned on ports 3003/4610/4620/4630/54343. Fresh migrations, production configuration, individual authentication, worker/downstream readiness, empty invoice/vendor/PO/commitment state, initial administrator creation, real browser sign-in, administrator navigation, password-change UI and absence of sample UI/routes were verified. Existing development business records were preserved; only the separate workspace received the explicitly requested administrator account.
+- The native production frontend and all three service builds passed. Build directories are separated so subsequent E2E builds do not replace the running production frontend.
+- Container images, full deployment, Caddy execution, alert delivery, backup/restore and the CI workflow remain **UNVERIFIED**. Docker-compatible runtimes and dump/restore utilities remain unavailable; the embedded database package only supplies server binaries. Backup/restore changes receive shell syntax checks and a standalone file-comparison regression, which do not verify a container restore.
+
+## Final continuation verification — 2 November 2026
+
+- **44/44 unit/contract tests passed**, including the final filesystem restoration regression. It accepts identical original/restored files and rejects byte corruption, extra/missing names and symbolic links; it does not execute a database or Docker restore.
+- **Typecheck, ESLint, source formatting and diff whitespace checks passed.** Generated `.next-tests` and `.next-production` outputs are excluded from source linting/formatting and image contexts.
+- A production Next.js build and the **focused browser lost-upload test passed**, with the shared isolated bootstrap also verifying atomic initial administration, normal/offline account recovery, source-approval holds, review-reason persistence, private metrics, document corruption scans and encoded/case-varied production sample denial. The complete **9/9 browser suite passed on 1 November**; it was not repeated wholesale after the narrow final proxy/configuration changes.
+- **Python/Bash/YAML syntax checks passed**, including all 16 CI shell snippets. The CI workflow itself was not run. Its prepared Compose drill now compares restored DB counts before starting workers and checks queued-job recovery afterward.
+- The requested administrator remains active. The native company workspace returned production mode, individual authentication, ready worker/downstream services and mandatory source verification. Initial password file permissions were checked as **0600**. Existing development invoice data remains separate and unchanged.
+- The final native frontend/service build was refreshed for the company workspace. Docker-compatible runtimes, Caddy and database dump/restore clients remain unavailable. Public deployment, a full backup/restore drill, real alert delivery and representative English-invoice accuracy remain **UNVERIFIED**.
+
+The public Portuguese negative result remains unchanged and is not recast as successful extraction. Current verdicts: assessment workflow verified locally; controlled real-data pilot **NOT READY**; public production **NOT READY**. See [the tracker](remediation-tracker.md) for the exact outstanding environment, data and owner inputs.

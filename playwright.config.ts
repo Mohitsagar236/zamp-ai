@@ -9,7 +9,7 @@ export default defineConfig({
   use: { baseURL: "http://127.0.0.1:3001", trace: "retain-on-failure" },
   webServer: {
     command: "node --import tsx scripts/e2e-server.ts",
-    url: "http://127.0.0.1:3001/api/health",
+    url: "http://127.0.0.1:4499",
     reuseExistingServer: false,
     timeout: 120000,
   },

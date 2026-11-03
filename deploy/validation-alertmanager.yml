@@ -1,0 +1,11 @@
+route:
+  receiver: local-drill
+  group_by: [alertname]
+  group_wait: 1s
+  group_interval: 5s
+  repeat_interval: 1h
+receivers:
+  - name: local-drill
+    webhook_configs:
+      - url: http://validation-alert-receiver:8080/alerts
+        send_resolved: true

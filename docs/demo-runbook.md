@@ -1,30 +1,40 @@
 # Demo runbook
 
-## Readiness
-1. Install Node 22.13+, `npm ci`, copy `.env.example` to `.env`.
-2. Terminal A: `npm run db:local`. Terminal B: `npm run db:migrate && npm run db:seed`.
-3. `npm run provider:check` warms the English OCR model and verifies text and image-only paths without adding invoice records.
-4. `npm run build`. Terminal B: `npm start`. Terminal C: `npm run worker`.
-5. Open exactly http://127.0.0.1:3000; policy page should show database and worker ready. API `/api/health` must show worker ready. Do not start a recording while the worker is offline.
-6. Run in the scenario order below. The sample buttons actually upload the downloaded PDF; no manifest drives the runtime.
+## Start and readiness
 
-## Scenarios / expected extraction and decisions
-All examples use ISO invoice date 2026-10-26 and INR. Starting DB is the seeded dataset with no uploaded runs. Suppliers are matched by registered identifiers. The five synthetic PDFs and reference-records.json are downloadable from Upload.
+1. Install Node.js 22.13+, run `npm ci`, and copy `.env.example` to `.env`.
+2. Start the isolated service database with `npm run services:db`; leave it running.
+3. In a second terminal run `npm run dev`. This starts Extraction, Decision, Workflow, and the Next.js frontend.
+4. Open <http://127.0.0.1:3000>. The workspace status should show processing available. `/api/health` must report the workflow database, worker, Decision, and Extraction as ready.
+5. The English Tesseract model downloads on the first image-only PDF. Warm it before a time-limited demo by processing `scan-missing-total.pdf` once.
 
-| Input | Extracted fields | Starting records | Decision / reason | Balance effect / human |
-| --- | --- | --- | --- | --- |
-| happy-path.pdf | Northstar, GST-NORTHSTAR-01, NS-2026-1042, PO-2026-101, subtotal 20000, tax 3600, total 23600 | Approved supplier; open INR 200000 PO | READY_FOR_APPROVAL; required, arithmetic, identity, currency, balance pass | Reserve INR 23600; optional approve with reason |
-| duplicate-renamed.pdf | Identical to clean PDF, different filename | Clean original already processed | BLOCKED / DUPLICATE; link original | Zero additional allocation; no approval bypass |
-| split-overbalance.pdf | Cloudline, GST-CLOUDLINE-03, CL-2026-204, PO-2026-200, subtotal 33898.31, tax 6101.69, total 40000 | INR 100000 limit; imported HIST-001 commitment INR 70000 | BLOCKED / PO_BALANCE; INR 10000 excess | No reservation; resolve business order outside this UI |
-| scan-missing-total.pdf | Image-only PDF. OCR: Northstar, NS-2026-SCAN, PO-2026-101, subtotal 10000, tax 1800, total null | Same approved Northstar and available order | NEEDS_REVIEW / missing total | Zero until verified correction. Enter total 11800.00 with reason, rerun → ready, reserve INR 11800 |
-| ambiguous-po.pdf | Meridian, GST-MERIDIAN-02, SM-2026-089, no PO, subtotal 10000, tax 1800, total 11800 | Two open INR 100000 POs: PO-2026-301/302 | NEEDS_REVIEW / PO_AMBIGUOUS; both candidates | Zero until human selects confirmed order with reason; rerun → ready |
+The UI uploads actual PDFs from `public/samples`. The fixture manifest is documentation and does not drive runtime decisions. Local service databases live under `.data/invoicelens-services`; stop the app before copying that directory as a backup. Restarting the database or application does not clear stored invoices, documents, or references.
 
-Expected results are test documentation; the parser reads actual bytes. A second upload after demonstration is correctly a duplicate, not a fresh happy path. Use corrections on the original record. Scan correction demo is based on the documented synthetic scenario; real operations require independent supplier verification.
+## Scenarios and expected outcomes
 
-## Safe reset
-Stop worker (Ctrl-C), wait at least 20 seconds, then `npm run demo:reset -- --confirm-demo-reset`. It requires APP_ENV=demo and the exact demo database name. It refuses an active worker heartbeat and production. It resets database demo records, not private file storage. Restart worker. Do not reset the database during recording or against live financial data. E2E uses its own explicitly disposable invoicelens_e2e database.
+All sample documents use INR and a synthetic 2026-10-26 invoice date. References are seeded in demo mode. See [business rules](business-rules.md) for exact controls.
 
-## Live troubleshooting
-No API credentials or paid services needed. Initial model download needs internet; warm via provider:check for offline interview use. If provider check fails, label scans unverified until fixed; never substitute fixture JSON. Worker logs show run IDs without document contents. Corrupt/encrypted/over-page-limit files show processing failure; retry after fixing the input/setup. Request origin must exactly match APP_URL. Persistent queued work resumes after the worker starts. Lease recovery takes up to 180 seconds after a hard crash; automatic retries stop after 3 attempts.
+| PDF                      | Expected result      | Evidence and next action                                                                                                                                             |
+| ------------------------ | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `happy-path.pdf`         | `READY_FOR_APPROVAL` | Northstar, INR 23,600, open PO-2026-101; funds are reserved, then a reviewer may approve with a reason.                                                              |
+| `duplicate-renamed.pdf`  | `BLOCKED`            | Same document hash as the clean invoice despite its filename; link to the earlier invoice and no new commitment.                                                     |
+| `split-overbalance.pdf`  | `BLOCKED`            | Cloudline PO-2026-200 has a synthetic INR 70,000 prior commitment against an INR 100,000 limit; this INR 40,000 invoice exceeds the available balance by INR 10,000. |
+| `scan-missing-total.pdf` | `NEEDS_REVIEW`       | Tesseract reads the scanned page but cannot derive the missing total; enter a verified INR 11,800 correction with a reason to re-run the checks.                     |
+| `ambiguous-po.pdf`       | `NEEDS_REVIEW`       | Two Meridian orders match; a reviewer selects the confirmed PO with a reason before checks can recommend approval.                                                   |
 
-For a restart demonstration: note invoice ID and decision, stop app and worker, restart them with unchanged database/storage, open the same detail URL and dashboard. Stored extraction is reused; no new OCR request occurs on refresh.
+Repeat uploads are correctly duplicates. Use another synthetic invoice number only after explicitly copying a new fixture and preserving the original document/hash relationship. For a clean interview demo, use the disposable E2E databases rather than resetting local service data.
+
+## Recovery and troubleshooting
+
+- If `/api/health` reports a downstream service unavailable, restart `npm run dev` and confirm ports 4100–4300 are free. Durable queued work remains in the workflow database.
+- If a process stops mid-job, the lease expires and the workflow service requeues it. Repeated interruptions are bounded and appear in the persisted event history.
+- An extraction failure does not create an approval recommendation. Corrupt, encrypted, oversized, and over-page-limit PDFs fail visibly.
+- Keep the same `APP_URL` as the browser origin; write requests with a different Origin are refused.
+- OCR downloads the English model from the public Tesseract language data service once. Original PDFs are processed locally and are not uploaded to a third-party extraction API.
+- Local generated credentials are in `.data/invoicelens-services/*.env`, mode 0600. Do not commit or share them.
+
+There is no reset command in the normal demo path. Preserve local records by default. To rehearse disposable data resets or the legacy copier, use the test-only environment created by `npm run test:e2e` or a separately cloned dataset.
+
+## Remediation follow-up
+
+The assessment workspace remains a shared-credential demo. OCR invoices require confirming extracted values against the original scan in the correction dialog before approval. The current system is not authorized or prepared for a real-data pilot; see [the remediation tracker](remediation-tracker.md) and [operations guidance](operations.md).

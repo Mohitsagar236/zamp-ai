@@ -1,0 +1,10 @@
+{
+  "browser": "Playwright Chromium, desktop and viewport emulation; no physical mobile device",
+  "results": [
+    "No-results search state visible",
+    "Correction dialog: keyboard containment, Escape, focus restoration and Axe checks passed",
+    "Reject confirmation opens with cancel focused and Escape closes",
+    "200% desktop zoom equivalent (720 CSS px) reference layout has no page overflow",
+    "Reduced-motion preference exercised"
+  ]
+}

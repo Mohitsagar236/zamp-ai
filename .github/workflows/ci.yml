@@ -1,0 +1,133 @@
+name: InvoiceLens verification
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-stack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install independently declared service dependencies
+        run: |
+          npm ci --prefix packages/contracts
+          for service in workflow extraction decision; do npm ci --prefix "services/$service"; done
+      - run: npx playwright install --with-deps chromium
+      - name: Audit runtime dependencies
+        run: |
+          npm audit --omit=dev
+          for service in workflow extraction decision; do npm audit --omit=dev --prefix "services/$service"; done
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+      - run: npm run build:services
+      - run: npm run evaluate:extraction
+      - run: npm run test:e2e
+      - run: npm run typecheck
+
+  compose-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Prepare ephemeral Compose configuration
+        run: |
+          npm run compose:env -- .env.microservices
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('.env.microservices')
+          text = path.read_text().replace('APP_PORT=3000', 'APP_PORT=3180').replace('APP_URL=http://127.0.0.1:3000', 'APP_URL=http://127.0.0.1:3180')
+          path.write_text(text)
+          PY
+      - name: Build and start all containers
+        run: |
+          docker compose --project-name invoicelens-ci --env-file .env.microservices up -d --build
+      - name: Verify gateway and authenticated service boundaries
+        run: |
+          for i in $(seq 1 90); do
+            if curl --fail --silent http://127.0.0.1:3180/api/live >/dev/null; then break; fi
+            sleep 2
+          done
+          curl --fail http://127.0.0.1:3180/api/live
+          docker compose --project-name invoicelens-ci --env-file .env.microservices exec -T workflow node --input-type=module -e 'const r=await fetch("http://127.0.0.1:4100/health/ready",{headers:{Authorization:"Bearer "+process.env.WORKFLOW_TOKEN}}); if(!r.ok) process.exit(1); const h=await r.json(); if(h.worker!=="ready") process.exit(2); console.log("Workflow and downstream readiness passed")'
+          docker compose --project-name invoicelens-ci --env-file .env.microservices exec -T decision node --input-type=module -e 'const base="http://127.0.0.1:4300/v1/references"; const unauth=await fetch(base); if(unauth.status!==401) process.exit(1); const auth=await fetch(base,{headers:{Authorization:"Bearer "+process.env.SERVICE_TOKEN}}); if(!auth.ok) process.exit(2); console.log("Decision auth boundary passed")'
+          docker compose --project-name invoicelens-ci --env-file .env.microservices exec -T postgres psql -U invoicelens_admin -d invoicelens_workflow -Atqc "SELECT count(*) FROM schema_migrations" | grep -Eq '^[1-9][0-9]*$'
+          docker compose --project-name invoicelens-ci --env-file .env.microservices exec -T postgres psql -U invoicelens_admin -d invoicelens_extraction -Atqc "SELECT count(*) FROM schema_migrations" | grep -Eq '^[1-9][0-9]*$'
+          docker compose --project-name invoicelens-ci --env-file .env.microservices exec -T postgres psql -U invoicelens_admin -d invoicelens_decision -Atqc "SELECT count(*) FROM schema_migrations" | grep -Eq '^[1-9][0-9]*$'
+          docker compose --project-name invoicelens-ci --env-file .env.microservices exec -T postgres psql -U invoicelens_admin -d invoicelens_identity -Atqc "SELECT count(*) FROM invoicelens_identity_migrations" | grep -Eq '^[1-9][0-9]*$'
+      - name: Exercise OCR, review, private documents, and restart persistence
+        run: |
+          password="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
+          echo "::add-mask::$password"
+          export INVOICELENS_ADMIN_EMAIL=ci-admin@example.test
+          export INVOICELENS_ADMIN_PASSWORD="$password"
+          export AUTH_BOOTSTRAP_PASSWORD="$password"
+          docker compose --project-name invoicelens-ci --env-file .env.microservices run --rm --no-deps -e AUTH_BOOTSTRAP=true -e AUTH_BOOTSTRAP_PASSWORD frontend npm run auth:bootstrap -- ci-admin@example.test 'CI Administrator'
+          INVOICELENS_VALIDATION_DATA=synthetic-isolated-only npm run verify:provision -- http://127.0.0.1:3180
+          npm run verify:compose -- http://127.0.0.1:3180 | tee /tmp/invoicelens-compose-smoke.json
+          invoice_ids="$(tail -n 1 /tmp/invoicelens-compose-smoke.json | python3 -c 'import json,sys; print(",".join(json.load(sys.stdin)["invoices"]))')"
+          docker compose --project-name invoicelens-ci --env-file .env.microservices restart extraction decision workflow frontend
+          for i in $(seq 1 90); do
+            if curl --fail --silent http://127.0.0.1:3180/api/live >/dev/null; then break; fi
+            sleep 2
+          done
+          INVOICELENS_VERIFY_INVOICE_IDS="$invoice_ids" npm run verify:compose -- http://127.0.0.1:3180
+          docker compose --project-name invoicelens-ci --env-file .env.microservices stop -t 180 workflow
+          drill_id="$(docker compose --project-name invoicelens-ci --env-file .env.microservices run --rm --no-deps -e APP_ENV=test -e INVOICELENS_RECOVERY_DRILL=synthetic-isolated-only workflow node dist/services/workflow/src/recovery-drill.js | tail -n 1 | python3 -c 'import json,sys; print(json.load(sys.stdin)["invoiceId"])')"
+          npm run backup:compose -- invoicelens-ci .env.microservices /tmp/invoicelens-ci-backup
+          npm run compose:env -- .env.restore
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('.env.restore')
+          text = path.read_text().replace('APP_PORT=3000', 'APP_PORT=3181').replace('APP_URL=http://127.0.0.1:3000', 'APP_URL=http://127.0.0.1:3181')
+          path.write_text(text)
+          PY
+          INVOICELENS_RESTORE_START=false npm run restore:compose -- /tmp/invoicelens-ci-backup invoicelens-ci-restore .env.restore
+          docker compose --project-name invoicelens-ci-restore --env-file .env.restore exec -T postgres psql -U invoicelens_admin -d invoicelens_identity -Atqc "SELECT count(*) FROM session" | grep -qx '0'
+          docker compose --project-name invoicelens-ci-restore --env-file .env.restore exec -T postgres psql -U invoicelens_admin -d invoicelens_identity -Atqc "SELECT count(*) FROM verification" | grep -qx '0'
+          for row in workflow extraction decision identity; do
+            case "$row" in
+              workflow) query="SELECT (SELECT count(*) FROM invoices)||'|'||(SELECT count(*) FROM workflow_jobs)||'|'||(SELECT count(*) FROM stage_events)||'|'||(SELECT count(*) FROM reconciliation_cases)" ;;
+              extraction) query="SELECT (SELECT count(*) FROM extraction_cache)||'|'||(SELECT count(*) FROM extraction_results)||'|'||(SELECT count(*) FROM extraction_operations)" ;;
+              decision) query="SELECT (SELECT count(*) FROM decision_records)||'|'||(SELECT count(*) FROM vendors)||'|'||(SELECT count(*) FROM purchase_orders)||'|'||(SELECT count(*) FROM commitments)||'|'||(SELECT count(*) FROM decision_operations)" ;;
+              identity) query="SELECT (SELECT count(*) FROM \"user\")||'|'||(SELECT count(*) FROM identity_audit)" ;;
+            esac
+            expected="$(sed -n "s/^${row}_counts=[^:]*://p" /tmp/invoicelens-ci-backup/manifest.txt)"
+            database="$([ "$row" = identity ] && echo invoicelens_identity || echo invoicelens_$row)"
+            actual="$(docker compose --project-name invoicelens-ci-restore --env-file .env.restore exec -T postgres psql -U invoicelens_admin -d "$database" -Atqc "$query")"
+            test "$expected" = "$actual"
+          done
+          (cd /tmp/invoicelens-ci-backup && shasum -a 256 -c documents.sha256)
+          actual_commitments="$(docker compose --project-name invoicelens-ci-restore --env-file .env.restore exec -T postgres psql -U invoicelens_admin -d invoicelens_decision -AtF '|' -c "SELECT po_id,count(*),sum(amount_minor) FROM commitments GROUP BY po_id ORDER BY po_id")"
+          diff -u /tmp/invoicelens-ci-backup/commitments-by-po.txt <(printf '%s\n' "$actual_commitments")
+          docker compose --project-name invoicelens-ci-restore --env-file .env.restore up -d --build
+          for i in $(seq 1 120); do
+            if curl --fail --silent http://127.0.0.1:3181/api/live >/dev/null; then break; fi
+            sleep 2
+          done
+          INVOICELENS_VERIFY_RECOVERY_ID="$drill_id" INVOICELENS_VERIFY_INVOICE_IDS="$invoice_ids" npm run verify:compose -- http://127.0.0.1:3181
+          recovery_commitments="$(docker compose --project-name invoicelens-ci-restore --env-file .env.restore exec -T postgres psql -U invoicelens_admin -d invoicelens_decision -Atqc "SELECT count(*) FROM commitments WHERE invoice_id='$drill_id'")"
+          test "$recovery_commitments" = 0
+          duplicate_count="$(docker compose --project-name invoicelens-ci-restore --env-file .env.restore exec -T postgres psql -U invoicelens_admin -d invoicelens_decision -Atqc "SELECT count(*) FROM (SELECT invoice_id FROM commitments GROUP BY invoice_id HAVING count(*)>1) d")"
+          test "$duplicate_count" = 0
+      - name: Stop isolated stack
+        if: always()
+        run: |
+          if [ -f .env.microservices ]; then docker compose --project-name invoicelens-ci --env-file .env.microservices down -v; fi
+          if [ -f .env.restore ]; then docker compose --project-name invoicelens-ci-restore --env-file .env.restore down -v; fi

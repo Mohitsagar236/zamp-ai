@@ -1,0 +1,262 @@
+{
+  "generatedAt": "2026-11-01T11:54:10.871Z",
+  "source": "https://zenodo.org/records/6371710",
+  "citation": "Francisco Cruz and Mauro Castelli (2022), Dataset of invoices and receipts including annotation of relevant fields, DOI:10.5281/zenodo.6371710",
+  "license": "CC-BY-4.0",
+  "labelProvenance": "Publisher annotations; not two independent AP labels",
+  "sampling": "First N ZIP image members in publisher order; not representative sampling",
+  "scope": "Public Portuguese invoices/receipts: unsupported-language negative evaluation with publisher labels. No company PO/vendor snapshot, no end-to-end financial matching evaluation, and no representative English accuracy claim. Production requires source review for every invoice; zero ungated errors reflects that policy, not extraction quality.",
+  "totals": {
+    "documents": 20,
+    "scoredAnnotatedFields": 84,
+    "correct": 0,
+    "criticalFieldAccuracy": 0,
+    "wrong": 0,
+    "missing": 84,
+    "incorrectValuesAcceptedWithoutReview": 0,
+    "reviewRoutingRate": 1,
+    "processingFailures": 0
+  },
+  "byCategory": [
+    {
+      "category": "public-Portuguese-invoice-or-receipt",
+      "documents": 20,
+      "scoredAnnotatedFields": 84,
+      "correct": 0,
+      "criticalFieldAccuracy": 0,
+      "wrong": 0,
+      "missing": 84,
+      "incorrectValuesAcceptedWithoutReview": 0,
+      "reviewRoutingRate": 1,
+      "processingFailures": 0
+    }
+  ],
+  "nodeVersion": "v22.23.4",
+  "codeHashes": {
+    "services/extraction/src/provider.ts": "0ab2e20a55846ee90dc75c3549784849157908e10c88580b492eeb78247ceb6c",
+    "services/extraction/src/parser.ts": "5a325acd8919cc8a11997366ebeb43deed5c3821f1697fa42c1508304432f730",
+    "packages/contracts/src/index.ts": "8712a3d9a1180d74069ffc86e55d7980b9830f5a35009ee7559d9e3b91561528"
+  },
+  "documentIntegrity": [
+    {
+      "id": "20210316_223932",
+      "originalImageSha256": "f35392ae9968ce29368c5e674f34cb374f495f5242de48f9a8d4fd88d8d39659",
+      "pdfSha256": "98fc6758e12fea09394a4a262e66aea31ddd2377d9b9d0833ab6b05d65c927a7",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 4,
+      "correct": 0,
+      "missing": 4,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_110237",
+      "originalImageSha256": "56d0b3bb862ad8bedf2c534e448bc0691b3f2cc7077b63577dea353db44a7224",
+      "pdfSha256": "fc279e805ce9cd359bec55e0286b0e741cd74b64320c8b04793acb99e61cca9a",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 4,
+      "correct": 0,
+      "missing": 4,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_110451",
+      "originalImageSha256": "d55b046d7fc3a441b22fabb2427a5b7bba5f7899e592ba0634933a6789d76775",
+      "pdfSha256": "c9af9234acbe758ca317b08871111f337a283f7ea6f492df2779761ccf631b67",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 4,
+      "correct": 0,
+      "missing": 4,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_110735",
+      "originalImageSha256": "98786c43a75ebd6108323c0b6bb34b197785f4d0d2e25fa86c7d3decaa19a2bc",
+      "pdfSha256": "6a6b1ca62b7c11b276ca3346df3dcae6534a1ac5cb6a946762ee7ff2c6c2c764",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 4,
+      "correct": 0,
+      "missing": 4,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_111439",
+      "originalImageSha256": "b2449a449cb410dc4594b982bebd4444e61f7e9f92e68980896d6ec9d8b45531",
+      "pdfSha256": "22391780727f834ec29cd2f0a07750986fdf81c4717818e2c34d35dade304697",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 4,
+      "correct": 0,
+      "missing": 4,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_111551",
+      "originalImageSha256": "2f092f8f02dbd35bcb8aa44596307127f558f913d2844270d55d7dfc1c6c5d51",
+      "pdfSha256": "dfa0895e72e657b98d37348a2230362a11d6e6d84b82c4ec2082fe9404266286",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 5,
+      "correct": 0,
+      "missing": 5,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_111820",
+      "originalImageSha256": "642fb5d9017938f1f0f03854ac6e1e9b43e95b84fb80eb5f55ad4fcdee989473",
+      "pdfSha256": "9e8074cfad75b0e8ce27d4ea9feba1f8de473c9ac9ffdbe538205a298c48af4d",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 5,
+      "correct": 0,
+      "missing": 5,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_113425",
+      "originalImageSha256": "cbd3f5d14926b39d30cf8f0d6296354b6503b90c94a4505e8d8d1fd1db4a935e",
+      "pdfSha256": "c4bbf284dfd098fce283d2afdbf9ea9f9b855d3bfb2db73ed712ca71ff90ade2",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 4,
+      "correct": 0,
+      "missing": 4,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_113703",
+      "originalImageSha256": "e51610f317ac759a05db17746eec748dbafa66f399870122b4a92791d7845917",
+      "pdfSha256": "714d79ea9346add71e2a78a9c32691e07eb43cf97e2b61b1f05c0487959c4cbd",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 4,
+      "correct": 0,
+      "missing": 4,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_114437",
+      "originalImageSha256": "f8df680e62988749a11c4c7461bb6077d50d7480facf5f51a0c593491d46c4de",
+      "pdfSha256": "cb6dc93a7d95a901b6225beff42f589cbab98e0e1cc38b4e8e664790fc770fcc",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 4,
+      "correct": 0,
+      "missing": 4,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_114507",
+      "originalImageSha256": "73373947412beb273780524de4960c11e79013b817f10f02567587ec01d35732",
+      "pdfSha256": "cad0ecbb32ddd508fc310fb110ffcb1c512a56118654b3961905c755642e2b89",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 4,
+      "correct": 0,
+      "missing": 4,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_115323",
+      "originalImageSha256": "4764bb90b6d1d9dad4d922ec3ec5a28dc74d0a176b60613fe74c480ad3b67d19",
+      "pdfSha256": "726bd404195218954e2511626048829195af8d890f4e02fd6a85dfadee73227c",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 4,
+      "correct": 0,
+      "missing": 4,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_115839",
+      "originalImageSha256": "f493db6c3c1b949d6def1d28919b5e3ce60431ffce7f731a90fe24d195a7514f",
+      "pdfSha256": "897b96f15d23d4504206cdce5127b30eb3d896997957f520f00337f7aaebcdac",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 4,
+      "correct": 0,
+      "missing": 4,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_120053",
+      "originalImageSha256": "139311bb8b2349e48923876ebec7f514370f78fd989ff36acd5f5c90212ca873",
+      "pdfSha256": "c64a9792dd419c4e56e7a3b06f01c06cb7b2924eb6005f900aa84ccec3d75f3f",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 4,
+      "correct": 0,
+      "missing": 4,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_122114",
+      "originalImageSha256": "e23070fc220ddb307ee4f2544a5db3b88f8540d056e60a47603359f337875919",
+      "pdfSha256": "d9e5a6d91b156988ae9eb0d925a70e93ae1c26626bd7dbb52bb280d11c959eb4",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 5,
+      "correct": 0,
+      "missing": 5,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_122239",
+      "originalImageSha256": "9f39ce734d2d60ab92f122c80e6e5123f1bcbf780fc73ad89a6e7cfedd175326",
+      "pdfSha256": "a17e6093acee2a7f169a49ee9080bdb437d9a819bb87ecf5f4caff8d68e747ff",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 4,
+      "correct": 0,
+      "missing": 4,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_122424",
+      "originalImageSha256": "e63c0c8622c98bfe3f461f7a25041a45f23746f4b8570a6a23895f11965901c5",
+      "pdfSha256": "d5e11ecc22e7d089b51ce42a531cff5ef2525b221f77fa99fb6b5a9438782fc9",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 5,
+      "correct": 0,
+      "missing": 5,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_123127",
+      "originalImageSha256": "9bdd6c0de00c01f630d9faaef59639ddcea3d909cdab18321f3cfc1bb7c2dcb9",
+      "pdfSha256": "e91ef4bb08db19ab97e9121d7cca4e205c413e1d463cc72a5893eb465bf138d7",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 4,
+      "correct": 0,
+      "missing": 4,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_123736",
+      "originalImageSha256": "141256520843b581525e778919e641eec33d4e70fc2aa4338cca9b22d2c5e835",
+      "pdfSha256": "fee8b4988a96b75babe0d67fd621a86c9b3fbb32467e378f55c290e34bb1c15a",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 4,
+      "correct": 0,
+      "missing": 4,
+      "wrong": 0,
+      "processingFailure": null
+    },
+    {
+      "id": "20210318_123940",
+      "originalImageSha256": "8d22f4f3be78fc13a0232dd6d62efa953801e9d45f411540fb40d09c72d7841b",
+      "pdfSha256": "fd3c095846ed670877c26a086c32a63e577dae7093da2f5f172f9d56f7d53a50",
+      "extractionVersion": "label-parser/2.0",
+      "scoredFields": 4,
+      "correct": 0,
+      "missing": 4,
+      "wrong": 0,
+      "processingFailure": null
+    }
+  ]
+}

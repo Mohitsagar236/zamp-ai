@@ -1,0 +1,9 @@
+node_modules
+.next
+.next-tests
+.next-production
+.data
+services/*/dist
+coverage
+playwright-report
+test-results

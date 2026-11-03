@@ -1,0 +1,33 @@
+# Local-only operational drill; combine with compose.yaml. No public ingress.
+services:
+  validation-caddy:
+    image: caddy:2.11.7
+    ports: ["127.0.0.1:3443:443"]
+    environment:
+      INVOICELENS_DOMAIN: localhost
+      INVOICELENS_UPSTREAM: frontend:3000
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - validation-caddy:/data
+    networks: [default]
+  validation-prometheus:
+    image: prom/prometheus:v3.15.1
+    ports: ["127.0.0.1:3190:9090"]
+    volumes:
+      - ./.data/compose-validation/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/prometheus-alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./.data/compose-validation/workflow-token:/etc/prometheus/workflow-token:ro
+  validation-alertmanager:
+    image: prom/alertmanager:v0.34.2
+    ports: ["127.0.0.1:3193:9093"]
+    volumes:
+      - ./deploy/validation-alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+  validation-alert-receiver:
+    image: node:22-bookworm-slim
+    working_dir: /receiver
+    command: ["node", "receiver.mjs"]
+    ports: ["127.0.0.1:3194:8080"]
+    volumes:
+      - ./deploy/validation-alert-receiver.mjs:/receiver/receiver.mjs:ro
+volumes:
+  validation-caddy:

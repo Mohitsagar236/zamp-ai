@@ -1,7 +1,11 @@
 node_modules/
 .next/
+.next-tests/
+.next-production/
+services/*/dist/
 .env*
 !.env.example
+!.env.microservices.example
 .data/
 playwright-report/
 test-results/

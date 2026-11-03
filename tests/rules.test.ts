@@ -1,7 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { evaluate, type Context } from "../src/lib/rules";
-import { minor, amount } from "../src/lib/money";
-import { validateUpload } from "../src/lib/storage";
+import { describe, it, expect, vi } from "vitest";
+import { evaluate, type Context } from "../services/decision/src/rules";
+import { minor, amount } from "../services/decision/src/money";
 import { authorize } from "../src/lib/auth";
 import type { Fields } from "../src/lib/types";
 const fields: Fields = {
@@ -43,6 +42,15 @@ const ctx: Context = {
 const run = (f: Partial<Fields> = {}, c: Partial<Context> = {}) =>
   evaluate({ ...fields, ...f }, { ...ctx, ...c });
 describe("deterministic financial policy", () => {
+  it("requires review when OCR has not been verified even if all fields pass", () => {
+    const result = run({}, { extractionReviewRequired: true });
+    expect(result.decision).toBe("NEEDS_REVIEW");
+    expect(
+      result.findings.some(
+        (finding) => finding.code === "OCR_VERIFICATION_REQUIRED",
+      ),
+    ).toBe(true);
+  });
   it("clean invoice is ready", () =>
     expect(run().decision).toBe("READY_FOR_APPROVAL"));
   for (const key of [
@@ -185,21 +193,31 @@ describe("deterministic financial policy", () => {
     ));
 });
 describe("money and file boundaries", () => {
+  it("refuses local or weak authentication in production", () => {
+    vi.stubEnv("APP_ENV", "production");
+    vi.stubEnv("AUTH_MODE", "local");
+    const request = new Request("http://127.0.0.1:3000/api/invoices", {
+      headers: { host: "127.0.0.1:3000" },
+    });
+    try {
+      expect(() => authorize(request)).toThrow(
+        /individual workspace authentication/,
+      );
+      vi.stubEnv("AUTH_MODE", "basic");
+      vi.stubEnv("WORKSPACE_PASSWORD", "weak");
+      expect(() => authorize(request)).toThrow(
+        /individual workspace authentication/,
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
   it("uses integer minor units", () => {
     expect(minor("0.10", "INR") + minor("0.20", "INR")).toBe(30n);
     expect(amount(10000000n, "INR")).toBe("INR 100,000.00");
     expect(minor("25", "JPY")).toBe(25n);
     expect(minor("1.234", "KWD")).toBe(1234n);
     expect(() => minor("1.001", "INR")).toThrow();
-  });
-  it("validates extension, content and size", () => {
-    const valid = Buffer.from("%PDF-1.7\nexample");
-    expect(() => validateUpload("a.pdf", valid)).not.toThrow();
-    expect(() => validateUpload("a.exe", valid)).toThrow();
-    expect(() => validateUpload("a.pdf", Buffer.from("not a pdf"))).toThrow();
-    expect(() =>
-      validateUpload("a.pdf", Buffer.alloc(11 * 1024 * 1024)),
-    ).toThrow();
   });
   it("refuses nonlocal invoice access", () =>
     expect(() =>

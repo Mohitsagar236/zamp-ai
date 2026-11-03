@@ -1,0 +1,169 @@
+{
+  "provenance": "Synthetic evaluation fixtures authored for this harness; expected values are specified separately from the extraction code. They are not a sample of real customer invoices. Parser v3 explicitly normalizes unambiguous dates and requires review of the normalization; the former unsupported-date fixture now expects 2026-10-21, with review still required.",
+  "fixtures": [
+    {
+      "id": "two-page-labeled-inr",
+      "pages": [
+        [
+          "Synthetic supplier invoice",
+          "Supplier: Northstar Office Supplies",
+          "Supplier ID: GST-NORTHSTAR-01",
+          "Invoice number: BENCH-MULTI-01",
+          "Invoice date: 2026-10-21"
+        ],
+        [
+          "PO reference: PO-2026-101",
+          "Currency: INR",
+          "Subtotal: 100.00",
+          "Tax: 18.00",
+          "Total: 118.00"
+        ]
+      ],
+      "expected": {
+        "supplierName": "Northstar Office Supplies",
+        "supplierId": "GST-NORTHSTAR-01",
+        "invoiceNumber": "BENCH-MULTI-01",
+        "invoiceDate": "2026-10-21",
+        "poReference": "PO-2026-101",
+        "currency": "INR",
+        "subtotal": "100.00",
+        "tax": "18.00",
+        "total": "118.00"
+      },
+      "critical": [
+        "supplierName",
+        "invoiceNumber",
+        "invoiceDate",
+        "currency",
+        "total"
+      ],
+      "needsReview": false
+    },
+    {
+      "id": "unfamiliar-date-routes-to-review",
+      "pages": [
+        [
+          "Synthetic supplier invoice",
+          "Supplier: Northstar Office Supplies",
+          "Supplier ID: GST-NORTHSTAR-01",
+          "Invoice number: BENCH-DATE-02",
+          "Invoice date: 21/10/2026",
+          "PO reference: PO-2026-101",
+          "Currency: INR",
+          "Subtotal: 100.00",
+          "Tax: 18.00",
+          "Total: 118.00"
+        ]
+      ],
+      "expected": {
+        "supplierName": "Northstar Office Supplies",
+        "supplierId": "GST-NORTHSTAR-01",
+        "invoiceNumber": "BENCH-DATE-02",
+        "invoiceDate": "2026-10-21",
+        "poReference": "PO-2026-101",
+        "currency": "INR",
+        "subtotal": "100.00",
+        "tax": "18.00",
+        "total": "118.00"
+      },
+      "critical": [
+        "supplierName",
+        "invoiceNumber",
+        "invoiceDate",
+        "currency",
+        "total"
+      ],
+      "needsReview": true
+    },
+    {
+      "id": "missing-total-routes-to-review",
+      "pages": [
+        [
+          "Synthetic supplier invoice",
+          "Supplier: Acme Paper",
+          "Invoice number: ACME-203",
+          "Invoice date: 2026-08-03",
+          "Currency: USD",
+          "Subtotal: 45.00",
+          "Tax: 3.60"
+        ]
+      ],
+      "expected": {
+        "supplierName": "Acme Paper",
+        "invoiceNumber": "ACME-203",
+        "invoiceDate": "2026-08-03",
+        "currency": "USD",
+        "subtotal": "45.00",
+        "tax": "3.60",
+        "total": null
+      },
+      "critical": [
+        "supplierName",
+        "invoiceNumber",
+        "invoiceDate",
+        "currency",
+        "total"
+      ],
+      "needsReview": true
+    },
+    {
+      "id": "ambiguous-money-routes-to-review",
+      "pages": [
+        [
+          "Synthetic supplier invoice",
+          "Supplier: Acme Paper",
+          "Invoice number: ACME-204",
+          "Invoice date: 2026-08-04",
+          "Currency: INR",
+          "Subtotal: 10.00.50",
+          "Tax: 1.00",
+          "Total: 11.00.50"
+        ]
+      ],
+      "expected": {
+        "supplierName": "Acme Paper",
+        "invoiceNumber": "ACME-204",
+        "invoiceDate": "2026-08-04",
+        "currency": "INR",
+        "subtotal": null,
+        "tax": "1.00",
+        "total": null
+      },
+      "critical": [
+        "supplierName",
+        "invoiceNumber",
+        "invoiceDate",
+        "currency",
+        "total"
+      ],
+      "needsReview": true
+    },
+    {
+      "id": "ambiguous-date-still-requires-review",
+      "pages": [
+        [
+          "Supplier: Acme Paper",
+          "Invoice number: AMBIGUOUS-DATE-01",
+          "Invoice date: 01/02/2026",
+          "Currency: USD",
+          "Subtotal: 100.00",
+          "Tax: 0.00",
+          "Total: 100.00"
+        ]
+      ],
+      "expected": {
+        "supplierName": "Acme Paper",
+        "supplierId": null,
+        "invoiceNumber": "AMBIGUOUS-DATE-01",
+        "invoiceDate": null,
+        "poReference": null,
+        "currency": "USD",
+        "subtotal": "100.00",
+        "tax": "0.00",
+        "total": "100.00"
+      },
+      "critical": ["invoiceNumber", "invoiceDate", "currency", "total"],
+      "needsReview": true
+    }
+  ]
+}
